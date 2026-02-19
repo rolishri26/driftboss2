@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Drift Boss 2 - Smoke, Coins & Highscore</title>
+<title>Drift Boss 2 - Coins & Car Insurance</title>
 <style>
 body { margin:0; overflow:hidden; background:#87CEEB; font-family:Arial, sans-serif; }
 canvas { display:block; margin:auto; background:#6ec6ff; }
-#highscoreBtn {
+
+#highscoreBtn, #coinsBtn, #insuranceBtn {
     display:none;
     position:absolute;
     top:50%;
@@ -17,13 +18,18 @@ canvas { display:block; margin:auto; background:#6ec6ff; }
     border:none;
     border-radius:8px;
     cursor:pointer;
+    margin-top:10px;
 }
+#coinsBtn { top: 10px; left: 10px; transform: none; }
+#insuranceBtn { top: 50px; left: 10px; transform: none; }
 </style>
 </head>
 <body>
 
 <canvas id="game"></canvas>
 <button id="highscoreBtn">View Highscore</button>
+<button id="coinsBtn">Coins: 0</button>
+<button id="insuranceBtn">Buy Car Insurance (100 Coins)</button>
 
 <script>
 const canvas = document.getElementById("game");
@@ -31,17 +37,20 @@ const ctx = canvas.getContext("2d");
 canvas.width = 800;
 canvas.height = 600;
 
+// Game variables
 let score = 0;
 let gameOver = false;
 let spaceHeld = false;
 let highscore = localStorage.getItem("driftHighscore") || 0;
+let coinsCollected = parseInt(localStorage.getItem("driftCoins")) || 0;
+let carInsurance = false;
 
 // Drift controls
 document.addEventListener("keydown", e => { if(e.code === "Space") spaceHeld = true; });
 document.addEventListener("keyup", e => { if(e.code === "Space") spaceHeld = false; });
 
 // Track configuration
-let trackWidth = 400; // really wide tracks
+let trackWidth = 400;
 let track = [];
 let cameraY = 0;
 
@@ -69,7 +78,7 @@ for(let i=0; i<25; i++){
 
 // Load Poki-style car
 const carSprite = new Image();
-carSprite.src = "car.png"; 
+carSprite.src = "car.png";
 
 let car = {
     x: track[0].x,
@@ -126,11 +135,14 @@ function update(){
     // Remove offscreen coins
     coins = coins.filter(c => c.y - cameraY < canvas.height + 50);
 
-    // Coin collection
+    // Coin collection (wider coins, radius = 15)
     for(let c of coins){
-        if(!c.collected && Math.abs(car.x - c.x) < 20 && Math.abs(car.y - c.y) < 30){
+        if(!c.collected && Math.abs(car.x - c.x) < 25 && Math.abs(car.y - c.y) < 35){
             c.collected = true;
+            coinsCollected += 1;
             score += 50;
+            localStorage.setItem("driftCoins", coinsCollected);
+            document.getElementById("coinsBtn").innerText = "Coins: " + coinsCollected;
         }
     }
 
@@ -144,12 +156,18 @@ function update(){
         }
     }
     if(!safe){
-        gameOver = true;
-        if(score > highscore){
-            highscore = score;
-            localStorage.setItem("driftHighscore", highscore);
+        if(carInsurance){
+            // use insurance once
+            carInsurance = false;
+            alert("Car Insurance used! You have an extra life!");
+        } else {
+            gameOver = true;
+            if(score > highscore){
+                highscore = score;
+                localStorage.setItem("driftHighscore", highscore);
+            }
+            document.getElementById("highscoreBtn").style.display = "block";
         }
-        document.getElementById("highscoreBtn").style.display = "block";
     }
 
     // Update smoke
@@ -173,7 +191,7 @@ function drawCoins(){
         if(!c.collected){
             ctx.fillStyle = "gold";
             ctx.beginPath();
-            ctx.arc(c.x, c.y - cameraY, 10, 0, Math.PI*2);
+            ctx.arc(c.x, c.y - cameraY, 15, 0, Math.PI*2); // wider coins
             ctx.fill();
         }
     }
@@ -221,6 +239,27 @@ loop();
 const highBtn = document.getElementById("highscoreBtn");
 highBtn.addEventListener("click", () => {
     alert(`Score: ${score}\nHighscore: ${highscore}`);
+});
+
+// Coins button
+const coinsBtn = document.getElementById("coinsBtn");
+coinsBtn.style.display = "block";
+
+// Insurance button
+const insuranceBtn = document.getElementById("insuranceBtn");
+insuranceBtn.style.display = "block";
+insuranceBtn.addEventListener("click", () => {
+    if(coinsCollected >= 100 && !carInsurance){
+        coinsCollected -= 100;
+        carInsurance = true;
+        localStorage.setItem("driftCoins", coinsCollected);
+        document.getElementById("coinsBtn").innerText = "Coins: " + coinsCollected;
+        alert("Car Insurance purchased! Extra life activated!");
+    } else if(carInsurance){
+        alert("You already have Car Insurance!");
+    } else {
+        alert("Not enough coins to buy Car Insurance!");
+    }
 });
 </script>
 
