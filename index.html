@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Drift Boss 2 - Wider Tracks</title>
+<title>Drift Boss 2 - Wider Tracks & Thinner Car</title>
 <style>
 body { margin:0; overflow:hidden; background:#87CEEB; }
 canvas { display:block; margin:auto; background:#6ec6ff; }
@@ -26,7 +26,7 @@ document.addEventListener("keydown", e => { if(e.code === "Space") spaceHeld = t
 document.addEventListener("keyup", e => { if(e.code === "Space") spaceHeld = false; });
 
 // Track configuration
-let trackWidth = 200; // wider lanes
+let trackWidth = 280; // thicker tracks
 let track = [];
 
 // Camera
@@ -39,7 +39,7 @@ for(let i=0; i<7; i++){
 for(let i=7; i<25; i++){
     let last = track[track.length-1];
     let dir = Math.random() > 0.5 ? 1 : -1;
-    let shift = 140; // wider turns
+    let shift = 140; // wide turns
     let newX = last.x + dir*shift;
     newX = Math.max(trackWidth/2, Math.min(canvas.width - trackWidth/2, newX));
     track.push({ x: newX, y: last.y - 100 });
@@ -54,7 +54,7 @@ let car = {
     x: track[0].x,
     y: track[0].y - 25,
     angle: 0,
-    width: 60,   // adjust to sprite size
+    width: 40,   // thinner car
     height: 120,
     speed: 4
 };
@@ -63,7 +63,7 @@ let car = {
 function generateTrack(){
     let last = track[track.length-1];
     let dir = Math.random() > 0.5 ? 1 : -1;
-    let shift = 140; // wider turns
+    let shift = 140;
     let newX = last.x + dir*shift;
     newX = Math.max(trackWidth/2, Math.min(canvas.width - trackWidth/2, newX));
     track.push({ x: newX, y: last.y - 100 });
@@ -77,9 +77,9 @@ function update(){
 
     // Drift logic
     if(spaceHeld){
-        car.angle += 0.03; // turn right
+        car.angle += 0.03;
     } else {
-        car.angle -= 0.03; // turn left
+        car.angle -= 0.03;
     }
 
     car.angle = Math.max(-0.5, Math.min(0.5, car.angle));
@@ -89,7 +89,7 @@ function update(){
     car.y -= Math.cos(car.angle) * car.speed;
 
     // Camera follows car
-    cameraY = car.y - 400; // keeps car around middle vertically
+    cameraY = car.y - 400;
 
     // Generate new tiles if needed
     if(track[track.length-1].y > -100){
