@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Drift Boss 2 - Coins & Car Insurance</title>
+<title>Drift Boss 2 - Touch Controls & Coins</title>
 <style>
 body { margin:0; overflow:hidden; background:#87CEEB; font-family:Arial, sans-serif; }
 canvas { display:block; margin:auto; background:#6ec6ff; }
@@ -40,7 +40,7 @@ canvas.height = 600;
 // Game variables
 let score = 0;
 let gameOver = false;
-let spaceHeld = false;
+let spaceHeld = false; // also for touch
 let highscore = localStorage.getItem("driftHighscore") || 0;
 let coinsCollected = parseInt(localStorage.getItem("driftCoins")) || 0;
 let carInsurance = false;
@@ -48,6 +48,10 @@ let carInsurance = false;
 // Drift controls
 document.addEventListener("keydown", e => { if(e.code === "Space") spaceHeld = true; });
 document.addEventListener("keyup", e => { if(e.code === "Space") spaceHeld = false; });
+
+// Touch controls for mobile
+canvas.addEventListener("touchstart", e => { spaceHeld = true; e.preventDefault(); });
+canvas.addEventListener("touchend", e => { spaceHeld = false; e.preventDefault(); });
 
 // Track configuration
 let trackWidth = 400;
