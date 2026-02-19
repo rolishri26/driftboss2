@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Drift Boss 2 - Super Thin Car & Wide Tracks</title>
+<title>Drift Boss 2 - Endless Track</title>
 <style>
 body { margin:0; overflow:hidden; background:#87CEEB; }
 canvas { display:block; margin:auto; background:#6ec6ff; }
@@ -26,23 +26,23 @@ document.addEventListener("keydown", e => { if(e.code === "Space") spaceHeld = t
 document.addEventListener("keyup", e => { if(e.code === "Space") spaceHeld = false; });
 
 // Track configuration
-let trackWidth = 400; // really wide tracks
+let trackWidth = 400; // very wide tracks
 let track = [];
 
 // Camera
 let cameraY = 0;
 
 // Generate initial track
-for(let i=0; i<7; i++){
-    track.push({ x: canvas.width/2, y: 500 - i*100 });
-}
-for(let i=7; i<25; i++){
-    let last = track[track.length-1];
-    let dir = Math.random() > 0.5 ? 1 : -1;
-    let shift = 140; // wide turns
-    let newX = last.x + dir*shift;
-    newX = Math.max(trackWidth/2, Math.min(canvas.width - trackWidth/2, newX));
-    track.push({ x: newX, y: last.y - 100 });
+for(let i=0; i<25; i++){
+    let x = canvas.width/2;
+    let y = 500 - i*100;
+    if(i >= 7){ // add slight zig-zag after first 7 tiles
+        let dir = Math.random() > 0.5 ? 1 : -1;
+        let shift = 140;
+        x = track[i-1].x + dir*shift;
+        x = Math.max(trackWidth/2, Math.min(canvas.width - trackWidth/2, x));
+    }
+    track.push({ x: x, y: y });
 }
 
 // Load your Poki-style car image
@@ -59,7 +59,7 @@ let car = {
     speed: 4
 };
 
-// Generate new track tiles
+// Generate new track tiles endlessly
 function generateTrack(){
     let last = track[track.length-1];
     let dir = Math.random() > 0.5 ? 1 : -1;
@@ -91,9 +91,14 @@ function update(){
     // Camera follows car
     cameraY = car.y - 400;
 
-    // Generate new tiles if needed
-    if(track[track.length-1].y > -100){
+    // Generate new tiles ahead
+    while(track[track.length-1].y > car.y - 600){
         generateTrack();
+    }
+
+    // Optional: remove tiles that are far behind the camera
+    if(track[0].y - cameraY > canvas.height + 100){
+        track.shift();
     }
 
     // Collision detection
