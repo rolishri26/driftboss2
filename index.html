@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Drift Boss 2 - Touch Controls & Coins</title>
+<title>Drift Boss 2 - Redo Button & Touch</title>
 <style>
 body { margin:0; overflow:hidden; background:#87CEEB; font-family:Arial, sans-serif; }
 canvas { display:block; margin:auto; background:#6ec6ff; }
 
-#highscoreBtn, #coinsBtn, #insuranceBtn {
+#highscoreBtn, #coinsBtn, #insuranceBtn, #redoBtn {
     display:none;
     position:absolute;
     top:50%;
@@ -22,6 +22,7 @@ canvas { display:block; margin:auto; background:#6ec6ff; }
 }
 #coinsBtn { top: 10px; left: 10px; transform: none; }
 #insuranceBtn { top: 50px; left: 10px; transform: none; }
+#redoBtn { top: 90px; left: 10px; transform: none; }
 </style>
 </head>
 <body>
@@ -30,6 +31,7 @@ canvas { display:block; margin:auto; background:#6ec6ff; }
 <button id="highscoreBtn">View Highscore</button>
 <button id="coinsBtn">Coins: 0</button>
 <button id="insuranceBtn">Buy Car Insurance (50 Coins)</button>
+<button id="redoBtn">Redo</button>
 
 <script>
 const canvas = document.getElementById("game");
@@ -40,18 +42,10 @@ canvas.height = 600;
 // Game variables
 let score = 0;
 let gameOver = false;
-let spaceHeld = false; // also for touch
+let spaceHeld = false; 
 let highscore = localStorage.getItem("driftHighscore") || 0;
 let coinsCollected = parseInt(localStorage.getItem("driftCoins")) || 0;
 let carInsurance = false;
-
-// Drift controls
-document.addEventListener("keydown", e => { if(e.code === "Space") spaceHeld = true; });
-document.addEventListener("keyup", e => { if(e.code === "Space") spaceHeld = false; });
-
-// Touch controls for mobile
-canvas.addEventListener("touchstart", e => { spaceHeld = true; e.preventDefault(); });
-canvas.addEventListener("touchend", e => { spaceHeld = false; e.preventDefault(); });
 
 // Track configuration
 let trackWidth = 400;
@@ -64,34 +58,70 @@ let smokeParticles = [];
 // Coins
 let coins = [];
 
-// Generate initial track
-for(let i=0; i<25; i++){
-    let x = canvas.width/2;
-    let y = 500 - i*100;
-    if(i >= 7){ 
-        let dir = Math.random() > 0.5 ? 1 : -1;
-        let shift = 140;
-        x = track[i-1].x + dir*shift;
-        x = Math.max(trackWidth/2, Math.min(canvas.width - trackWidth/2, x));
-    }
-    track.push({ x: x, y: y });
-    if(i % 3 === 0){
-        coins.push({ x: x, y: y - 50, collected: false });
-    }
-}
-
 // Load Poki-style car
 const carSprite = new Image();
 carSprite.src = "car.png";
 
 let car = {
-    x: track[0].x,
-    y: track[0].y - 25,
+    x: 0,
+    y: 0,
     angle: 0,
     width: 25,
     height: 120,
     speed: 4
 };
+
+// Controls
+document.addEventListener("keydown", e => { if(e.code === "Space") spaceHeld = true; });
+document.addEventListener("keyup", e => { if(e.code === "Space") spaceHeld = false; });
+canvas.addEventListener("touchstart", e => { spaceHeld = true; e.preventDefault(); });
+canvas.addEventListener("touchend", e => { spaceHeld = false; e.preventDefault(); });
+
+// Buttons
+const highBtn = document.getElementById("highscoreBtn");
+const coinsBtn = document.getElementById("coinsBtn");
+const insuranceBtn = document.getElementById("insuranceBtn");
+const redoBtn = document.getElementById("redoBtn");
+
+// Functions to reset game
+function initGame(){
+    score = 0;
+    gameOver = false;
+    spaceHeld = false;
+    carInsurance = false;
+    cameraY = 0;
+
+    track = [];
+    coins = [];
+    smokeParticles = [];
+
+    // Generate initial track
+    for(let i=0; i<25; i++){
+        let x = canvas.width/2;
+        let y = 500 - i*100;
+        if(i >= 7){ 
+            let dir = Math.random() > 0.5 ? 1 : -1;
+            let shift = 140;
+            x = track[i-1].x + dir*shift;
+            x = Math.max(trackWidth/2, Math.min(canvas.width - trackWidth/2, x));
+        }
+        track.push({ x: x, y: y });
+        if(i % 3 === 0){
+            coins.push({ x: x, y: y - 50, collected: false });
+        }
+    }
+
+    car.x = track[0].x;
+    car.y = track[0].y - 25;
+
+    // Show buttons
+    coinsBtn.style.display = "block";
+    insuranceBtn.style.display = "block";
+    redoBtn.style.display = "block";
+    highBtn.style.display = "none";
+    coinsBtn.innerText = "Coins: " + coinsCollected;
+    insuranceBtn.innerText = "Buy Car Insurance (50 Coins)";
+}
 
 // Generate new track tiles endlessly
 function generateTrack(){
@@ -112,7 +142,6 @@ function update(){
 
     score++;
 
-    // Drift logic
     if(spaceHeld){
         car.angle += 0.03;
         smokeParticles.push({ x: car.x, y: car.y, alpha: 1, radius: Math.random()*5+5 });
@@ -121,32 +150,26 @@ function update(){
     }
     car.angle = Math.max(-0.5, Math.min(0.5, car.angle));
 
-    // Move car
     car.x += Math.sin(car.angle) * car.speed;
     car.y -= Math.cos(car.angle) * car.speed;
 
-    // Camera follows car
     cameraY = car.y - 400;
 
-    // Generate new track ahead
     while(track[track.length-1].y > car.y - 600){
         generateTrack();
     }
 
-    // Remove offscreen tiles
     if(track[0].y - cameraY > canvas.height + 100) track.shift();
-
-    // Remove offscreen coins
     coins = coins.filter(c => c.y - cameraY < canvas.height + 50);
 
-    // Coin collection (wider coins, radius = 15)
+    // Coin collection
     for(let c of coins){
         if(!c.collected && Math.abs(car.x - c.x) < 25 && Math.abs(car.y - c.y) < 35){
             c.collected = true;
             coinsCollected += 1;
             score += 50;
             localStorage.setItem("driftCoins", coinsCollected);
-            document.getElementById("coinsBtn").innerText = "Coins: " + coinsCollected;
+            coinsBtn.innerText = "Coins: " + coinsCollected;
         }
     }
 
@@ -162,18 +185,18 @@ function update(){
     if(!safe){
         if(carInsurance){
             carInsurance = false;
-            alert("Car Insurance used! You have an extra life!");
+            alert("Car Insurance used! Extra life activated!");
         } else {
             gameOver = true;
             if(score > highscore){
                 highscore = score;
                 localStorage.setItem("driftHighscore", highscore);
             }
-            document.getElementById("highscoreBtn").style.display = "block";
+            highBtn.style.display = "block";
         }
     }
 
-    // Update smoke
+    // Smoke update
     for(let s of smokeParticles){
         s.alpha -= 0.02;
         s.y += 1;
@@ -238,26 +261,17 @@ function loop(){
 
 loop();
 
-// Highscore button
-const highBtn = document.getElementById("highscoreBtn");
+// Button actions
 highBtn.addEventListener("click", () => {
     alert(`Score: ${score}\nHighscore: ${highscore}`);
 });
 
-// Coins button
-const coinsBtn = document.getElementById("coinsBtn");
-coinsBtn.style.display = "block";
-
-// Insurance button
-const insuranceBtn = document.getElementById("insuranceBtn");
-insuranceBtn.style.display = "block";
-insuranceBtn.innerText = "Buy Car Insurance (50 Coins)";
 insuranceBtn.addEventListener("click", () => {
     if(coinsCollected >= 50 && !carInsurance){
         coinsCollected -= 50;
         carInsurance = true;
         localStorage.setItem("driftCoins", coinsCollected);
-        document.getElementById("coinsBtn").innerText = "Coins: " + coinsCollected;
+        coinsBtn.innerText = "Coins: " + coinsCollected;
         alert("Car Insurance purchased! Extra life activated!");
     } else if(carInsurance){
         alert("You already have Car Insurance!");
@@ -265,6 +279,14 @@ insuranceBtn.addEventListener("click", () => {
         alert("Not enough coins to buy Car Insurance!");
     }
 });
+
+// Redo button
+redoBtn.addEventListener("click", () => {
+    initGame();
+});
+
+// Initialize first game
+initGame();
 </script>
 
 </body>
