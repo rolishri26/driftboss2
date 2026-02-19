@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Drift Boss 2 - Redo Button & Touch</title>
+<title>Drift Boss 2 - Embedded Car</title>
 <style>
 body { margin:0; overflow:hidden; background:#87CEEB; font-family:Arial, sans-serif; }
 canvas { display:block; margin:auto; background:#6ec6ff; }
@@ -43,25 +43,26 @@ canvas.height = 600;
 let score = 0;
 let gameOver = false;
 let spaceHeld = false; 
-let highscore = localStorage.getItem("driftHighscore") || 0;
+let highscore = parseInt(localStorage.getItem("driftHighscore")) || 0;
 let coinsCollected = parseInt(localStorage.getItem("driftCoins")) || 0;
 let carInsurance = false;
 
-// Track configuration
+// Track & camera
 let trackWidth = 400;
 let track = [];
 let cameraY = 0;
 
-// Smoke particles
+// Smoke
 let smokeParticles = [];
 
 // Coins
 let coins = [];
 
-// Load Poki-style car
+// Base64 Car image (small cartoon style)
 const carSprite = new Image();
-carSprite.src = "car.png";
+carSprite.src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAkklEQVR4nO3VMQ6AIBAF0Jf9Z20FNSM2cg4lsMvwK7Xh5X4r+jD1fj1BQAAAAAAAAAAAAAAAHg6ql0Wz9rRr3YDWz0N0qb6VuY+gB4j7l8i3X2EsGdA++Z6wjgPwzCjH5vCKD8J6sJ//AJ1/5Dg8pzzc+Oqz8DqqfJ0Z/1fRj0CFjCnYQwAAAAAAAAAAAAAAAIAtfoAHDd4r2AEkFrAAAAAElFTkSuQmCC";
 
+// Car
 let car = {
     x: 0,
     y: 0,
@@ -71,19 +72,19 @@ let car = {
     speed: 4
 };
 
-// Controls
-document.addEventListener("keydown", e => { if(e.code === "Space") spaceHeld = true; });
-document.addEventListener("keyup", e => { if(e.code === "Space") spaceHeld = false; });
-canvas.addEventListener("touchstart", e => { spaceHeld = true; e.preventDefault(); });
-canvas.addEventListener("touchend", e => { spaceHeld = false; e.preventDefault(); });
-
 // Buttons
 const highBtn = document.getElementById("highscoreBtn");
 const coinsBtn = document.getElementById("coinsBtn");
 const insuranceBtn = document.getElementById("insuranceBtn");
 const redoBtn = document.getElementById("redoBtn");
 
-// Functions to reset game
+// Controls
+document.addEventListener("keydown", e => { if(e.code === "Space") spaceHeld = true; });
+document.addEventListener("keyup", e => { if(e.code === "Space") spaceHeld = false; });
+canvas.addEventListener("touchstart", e => { spaceHeld = true; e.preventDefault(); });
+canvas.addEventListener("touchend", e => { spaceHeld = false; e.preventDefault(); });
+
+// Initialize game
 function initGame(){
     score = 0;
     gameOver = false;
@@ -95,7 +96,6 @@ function initGame(){
     coins = [];
     smokeParticles = [];
 
-    // Generate initial track
     for(let i=0; i<25; i++){
         let x = canvas.width/2;
         let y = 500 - i*100;
@@ -136,7 +136,7 @@ function generateTrack(){
     }
 }
 
-// Update game
+// Update
 function update(){
     if(gameOver) return;
 
@@ -162,7 +162,6 @@ function update(){
     if(track[0].y - cameraY > canvas.height + 100) track.shift();
     coins = coins.filter(c => c.y - cameraY < canvas.height + 50);
 
-    // Coin collection
     for(let c of coins){
         if(!c.collected && Math.abs(car.x - c.x) < 25 && Math.abs(car.y - c.y) < 35){
             c.collected = true;
@@ -173,7 +172,6 @@ function update(){
         }
     }
 
-    // Collision detection
     let safe = false;
     for(let piece of track){
         if(car.x > piece.x - trackWidth/2 && car.x < piece.x + trackWidth/2 &&
@@ -196,7 +194,6 @@ function update(){
         }
     }
 
-    // Smoke update
     for(let s of smokeParticles){
         s.alpha -= 0.02;
         s.y += 1;
@@ -204,7 +201,7 @@ function update(){
     smokeParticles = smokeParticles.filter(s => s.alpha > 0);
 }
 
-// Draw functions
+// Draw
 function drawTrack(){
     ctx.fillStyle = "#444";
     for(let piece of track){
@@ -259,9 +256,7 @@ function loop(){
     requestAnimationFrame(loop);
 }
 
-loop();
-
-// Button actions
+// Buttons
 highBtn.addEventListener("click", () => {
     alert(`Score: ${score}\nHighscore: ${highscore}`);
 });
@@ -280,13 +275,15 @@ insuranceBtn.addEventListener("click", () => {
     }
 });
 
-// Redo button
 redoBtn.addEventListener("click", () => {
     initGame();
 });
 
-// Initialize first game
-initGame();
+// Start game after image loads
+carSprite.onload = () => {
+    initGame();
+    loop();
+};
 </script>
 
 </body>
