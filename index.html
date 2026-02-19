@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Drift Boss 2 - Wider Tracks & Thinner Car</title>
+<title>Drift Boss 2 - Super Thin Car & Wide Tracks</title>
 <style>
 body { margin:0; overflow:hidden; background:#87CEEB; }
 canvas { display:block; margin:auto; background:#6ec6ff; }
@@ -26,7 +26,7 @@ document.addEventListener("keydown", e => { if(e.code === "Space") spaceHeld = t
 document.addEventListener("keyup", e => { if(e.code === "Space") spaceHeld = false; });
 
 // Track configuration
-let trackWidth = 280; // thicker tracks
+let trackWidth = 400; // really wide tracks
 let track = [];
 
 // Camera
@@ -54,7 +54,7 @@ let car = {
     x: track[0].x,
     y: track[0].y - 25,
     angle: 0,
-    width: 40,   // thinner car
+    width: 25,   // super thin car
     height: 120,
     speed: 4
 };
