@@ -1,15 +1,29 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Drift Boss 2 - Endless Track</title>
+<title>Drift Boss 2 - Smoke, Coins, Highscore</title>
 <style>
-body { margin:0; overflow:hidden; background:#87CEEB; }
+body { margin:0; overflow:hidden; background:#87CEEB; font-family:Arial, sans-serif; }
 canvas { display:block; margin:auto; background:#6ec6ff; }
+#highscoreBtn {
+    display:none;
+    position:absolute;
+    top:50%;
+    left:50%;
+    transform:translate(-50%, -50%);
+    padding:10px 20px;
+    font-size:18px;
+    background:#fff;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+}
 </style>
 </head>
 <body>
 
 <canvas id="game"></canvas>
+<button id="highscoreBtn">View Highscore</button>
 
 <script>
 const canvas = document.getElementById("game");
@@ -20,41 +34,52 @@ canvas.height = 600;
 let score = 0;
 let gameOver = false;
 let spaceHeld = false;
+let highscore = localStorage.getItem("driftHighscore") || 0;
 
 // Drift controls
 document.addEventListener("keydown", e => { if(e.code === "Space") spaceHeld = true; });
 document.addEventListener("keyup", e => { if(e.code === "Space") spaceHeld = false; });
 
 // Track configuration
-let trackWidth = 400; // very wide tracks
+let trackWidth = 400; // really wide tracks
 let track = [];
 
 // Camera
 let cameraY = 0;
 
+// Smoke particles
+let smokeParticles = [];
+
+// Coins
+let coins = [];
+
 // Generate initial track
 for(let i=0; i<25; i++){
     let x = canvas.width/2;
     let y = 500 - i*100;
-    if(i >= 7){ // add slight zig-zag after first 7 tiles
+    if(i >= 7){ 
         let dir = Math.random() > 0.5 ? 1 : -1;
         let shift = 140;
         x = track[i-1].x + dir*shift;
         x = Math.max(trackWidth/2, Math.min(canvas.width - trackWidth/2, x));
     }
     track.push({ x: x, y: y });
+    // Add coins every few tiles
+    if(i % 3 === 0){
+        coins.push({ x: x, y: y - 50, collected: false });
+    }
 }
 
 // Load your Poki-style car image
 const carSprite = new Image();
-carSprite.src = "car.png"; // replace with your car picture
+carSprite.src = "car.png"; 
 
 // Car object
 let car = {
     x: track[0].x,
     y: track[0].y - 25,
     angle: 0,
-    width: 25,   // super thin car
+    width: 25,  
     height: 120,
     speed: 4
 };
@@ -67,6 +92,9 @@ function generateTrack(){
     let newX = last.x + dir*shift;
     newX = Math.max(trackWidth/2, Math.min(canvas.width - trackWidth/2, newX));
     track.push({ x: newX, y: last.y - 100 });
+    if(track.length % 3 === 0){
+        coins.push({ x: newX, y: last.y - 150, collected: false });
+    }
 }
 
 // Update game
@@ -78,27 +106,37 @@ function update(){
     // Drift logic
     if(spaceHeld){
         car.angle += 0.03;
+        // generate smoke on drift
+        smokeParticles.push({ x: car.x, y: car.y, alpha: 1, radius: Math.random()*5+5 });
     } else {
         car.angle -= 0.03;
     }
-
     car.angle = Math.max(-0.5, Math.min(0.5, car.angle));
 
-    // Move forward based on angle
+    // Move car
     car.x += Math.sin(car.angle) * car.speed;
     car.y -= Math.cos(car.angle) * car.speed;
 
     // Camera follows car
     cameraY = car.y - 400;
 
-    // Generate new tiles ahead
+    // Generate new track ahead
     while(track[track.length-1].y > car.y - 600){
         generateTrack();
     }
 
-    // Optional: remove tiles that are far behind the camera
-    if(track[0].y - cameraY > canvas.height + 100){
-        track.shift();
+    // Remove offscreen tiles for performance
+    if(track[0].y - cameraY > canvas.height + 100) track.shift();
+
+    // Remove offscreen coins
+    coins = coins.filter(c => c.y - cameraY < canvas.height + 50);
+
+    // Check coin collection
+    for(let c of coins){
+        if(!c.collected && Math.abs(car.x - c.x) < 20 && Math.abs(car.y - c.y) < 30){
+            c.collected = true;
+            score += 50; // bonus points
+        }
     }
 
     // Collision detection
@@ -110,7 +148,22 @@ function update(){
             break;
         }
     }
-    if(!safe) gameOver = true;
+    if(!safe){
+        gameOver = true;
+        // store highscore
+        if(score > highscore){
+            highscore = score;
+            localStorage.setItem("driftHighscore", highscore);
+        }
+        document.getElementById("highscoreBtn").style.display = "block";
+    }
+
+    // Update smoke particles
+    for(let s of smokeParticles){
+        s.alpha -= 0.02;
+        s.y += 1;
+    }
+    smokeParticles = smokeParticles.filter(s => s.alpha > 0);
 }
 
 // Draw track
@@ -118,6 +171,28 @@ function drawTrack(){
     ctx.fillStyle = "#444";
     for(let piece of track){
         ctx.fillRect(piece.x - trackWidth/2, piece.y - 50 - cameraY, trackWidth, 100);
+    }
+}
+
+// Draw coins
+function drawCoins(){
+    for(let c of coins){
+        if(!c.collected){
+            ctx.fillStyle = "gold";
+            ctx.beginPath();
+            ctx.arc(c.x, c.y - cameraY, 10, 0, Math.PI*2);
+            ctx.fill();
+        }
+    }
+}
+
+// Draw smoke
+function drawSmoke(){
+    for(let s of smokeParticles){
+        ctx.fillStyle = `rgba(200,200,200,${s.alpha})`;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y - cameraY, s.radius, 0, Math.PI*2);
+        ctx.fill();
     }
 }
 
@@ -136,13 +211,6 @@ function drawUI(){
     ctx.fillStyle = "white";
     ctx.font = "20px Arial";
     ctx.fillText("Score: " + score, 20, 30);
-
-    if(gameOver){
-        ctx.font = "40px Arial";
-        ctx.fillText("GAME OVER", 280, 300);
-        ctx.font = "18px Arial";
-        ctx.fillText("Refresh page to restart", 300, 340);
-    }
 }
 
 // Main loop
@@ -150,12 +218,20 @@ function loop(){
     update();
     ctx.clearRect(0,0,canvas.width,canvas.height);
     drawTrack();
+    drawCoins();
+    drawSmoke();
     drawCar();
     drawUI();
     requestAnimationFrame(loop);
 }
 
 loop();
+
+// Highscore button
+const highBtn = document.getElementById("highscoreBtn");
+highBtn.addEventListener("click", () => {
+    alert(`Score: ${score}\nHighscore: ${highscore}`);
+});
 </script>
 
 </body>
