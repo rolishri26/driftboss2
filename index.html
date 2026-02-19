@@ -1,158 +1,162 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Drift Boss 2 - Single Player</title>
-  <style>
-    body { margin:0; background:#000; overflow:hidden; }
-    canvas { display:block; margin:auto; background:linear-gradient(#222,#000); }
-  </style>
+<title>Drift Boss 2</title>
+<style>
+body {
+  margin: 0;
+  overflow: hidden;
+  background: linear-gradient(#87CEEB, #4CAF50);
+}
+
+canvas {
+  display: block;
+  margin: auto;
+  background: #6ec6ff;
+}
+</style>
 </head>
 <body>
-<canvas id="game" width="600" height="600"></canvas>
+
+<canvas id="game"></canvas>
 
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-const TRACK_WIDTH = 200;
-const TILE_SIZE = 60;
-const SPEED = 3;
+canvas.width = 800;
+canvas.height = 600;
 
-let spaceHeld = false;
-document.addEventListener("keydown", e => {
-  if (e.code === "Space") spaceHeld = true;
+let car = {
+  x: 400,
+  y: 300,
+  angle: 0,
+  size: 30,
+  driftingRight: false,
+  speed: 4
+};
+
+let track = [];
+let trackWidth = 120;
+let score = 0;
+let gameOver = false;
+
+// Generate initial straight track
+for (let i = 0; i < 20; i++) {
+  track.push({x: 400, y: 300 - i * 100});
+}
+
+// SPACE controls
+document.addEventListener("keydown", (e) => {
+  if (e.code === "Space") {
+    car.driftingRight = true;
+  }
 });
-document.addEventListener("keyup", e => {
-  if (e.code === "Space") spaceHeld = false;
+
+document.addEventListener("keyup", (e) => {
+  if (e.code === "Space") {
+    car.driftingRight = false;
+  }
 });
 
-class Track {
-  constructor() {
-    this.tiles = [];
-    this.offsetY = 0;
-    for (let i = 0; i < 15; i++) {
-      this.tiles.push({ shift: 0 });
+function generateTrack() {
+  let last = track[track.length - 1];
+  let direction = Math.random() > 0.5 ? -1 : 1;
+
+  track.push({
+    x: last.x + direction * 100,
+    y: last.y - 100
+  });
+}
+
+function update() {
+  if (gameOver) return;
+
+  score += 1;
+
+  // Drift movement
+  if (car.driftingRight) {
+    car.x += 3;
+    car.angle = 0.3;
+  } else {
+    car.x -= 3;
+    car.angle = -0.3;
+  }
+
+  car.y -= car.speed;
+
+  // Camera effect
+  ctx.translate(0, car.speed);
+
+  // Generate new track
+  if (track.length < 30) {
+    generateTrack();
+  }
+
+  // Collision check
+  let safe = false;
+  for (let piece of track) {
+    if (
+      car.x > piece.x - trackWidth/2 &&
+      car.x < piece.x + trackWidth/2 &&
+      car.y < piece.y + 50 &&
+      car.y > piece.y - 50
+    ) {
+      safe = true;
     }
   }
 
-  update() {
-    this.offsetY += SPEED;
-
-    if (this.offsetY >= TILE_SIZE) {
-      this.offsetY = 0;
-      this.tiles.shift();
-
-      let lastShift = this.tiles[this.tiles.length - 1].shift;
-      let newShift = lastShift + (Math.random() > 0.5 ? 30 : -30);
-      newShift = Math.max(-120, Math.min(120, newShift));
-      this.tiles.push({ shift: newShift });
-    }
-  }
-
-  draw() {
-    for (let i = 0; i < this.tiles.length; i++) {
-      let tile = this.tiles[i];
-      let y = i * TILE_SIZE - this.offsetY;
-
-      ctx.fillStyle = "#444";
-      ctx.fillRect(
-        canvas.width/2 - TRACK_WIDTH/2 + tile.shift,
-        y,
-        TRACK_WIDTH,
-        TILE_SIZE
-      );
-    }
-  }
-
-  getCurrentX() {
-    return canvas.width/2 - TRACK_WIDTH/2 + this.tiles[10].shift;
+  if (!safe) {
+    gameOver = true;
   }
 }
 
-class Car {
-  constructor() {
-    this.x = canvas.width/2;
-    this.y = 500;
-    this.angle = 0;
-    this.alive = true;
-    this.score = 0;
-  }
-
-  update(trackX) {
-    if (!this.alive) return;
-
-    this.score++;
-
-    // SPACE = drift right
-    if (spaceHeld) {
-      this.angle += 0.06;
-    } else {
-      this.angle -= 0.06;
-    }
-
-    this.x += Math.sin(this.angle) * 4;
-
-    if (this.x < trackX || this.x > trackX + TRACK_WIDTH) {
-      this.alive = false;
-    }
-  }
-
-  draw() {
-    ctx.save();
-    ctx.translate(this.x, this.y);
-    ctx.rotate(this.angle);
-
-    // Car body
-    ctx.fillStyle = "#00ffcc";
-    ctx.fillRect(-12, -20, 24, 40);
-
-    // Windshield
-    ctx.fillStyle = "#222";
-    ctx.fillRect(-8, -15, 16, 10);
-
-    // Wheels
-    ctx.fillStyle = "black";
-    ctx.fillRect(-14, -18, 4, 10);
-    ctx.fillRect(10, -18, 4, 10);
-    ctx.fillRect(-14, 8, 4, 10);
-    ctx.fillRect(10, 8, 4, 10);
-
-    ctx.restore();
+function drawTrack() {
+  ctx.fillStyle = "#333";
+  for (let piece of track) {
+    ctx.fillRect(
+      piece.x - trackWidth/2,
+      piece.y - 50,
+      trackWidth,
+      100
+    );
   }
 }
 
-let track = new Track();
-let car = new Car();
+function drawCar() {
+  ctx.save();
+  ctx.translate(car.x, car.y);
+  ctx.rotate(car.angle);
+
+  ctx.fillStyle = "red";
+  ctx.fillRect(-15, -25, 30, 50);
+
+  ctx.restore();
+}
 
 function drawUI() {
+  ctx.setTransform(1,0,0,1,0,0);
   ctx.fillStyle = "white";
   ctx.font = "20px Arial";
-  ctx.fillText("Score: " + car.score, 20, 30);
+  ctx.fillText("Score: " + score, 20, 30);
 
-  if (!car.alive) {
-    ctx.fillStyle = "red";
-    ctx.font = "30px Arial";
-    ctx.fillText("GAME OVER", 200, 280);
-    ctx.font = "18px Arial";
-    ctx.fillText("Refresh page to restart", 200, 320);
+  if (gameOver) {
+    ctx.font = "40px Arial";
+    ctx.fillText("GAME OVER", 300, 300);
   }
 }
 
 function gameLoop() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  track.update();
-  track.draw();
-
-  car.update(track.getCurrentX());
-  car.draw();
-
+  update();
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  drawTrack();
+  drawCar();
   drawUI();
-
   requestAnimationFrame(gameLoop);
 }
 
 gameLoop();
 </script>
+
 </body>
 </html>
