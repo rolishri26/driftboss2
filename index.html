@@ -1,15 +1,16 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Drift Boss 2 – Working Version</title>
+<title>Drift Boss 2 - Coins & Car Insurance</title>
 <style>
 body { margin:0; overflow:hidden; background:#87CEEB; font-family:Arial, sans-serif; }
 canvas { display:block; margin:auto; background:#6ec6ff; }
-#coinsBtn, #redoBtn {
-    position:absolute; top:10px; left:10px; padding:10px 20px; font-size:18px;
-    background:#fff; border:none; border-radius:8px; cursor:pointer;
+button {
+  position:absolute; padding:10px 20px; font-size:18px; background:#fff; border:none; border-radius:8px; cursor:pointer;
 }
-#redoBtn { top:50px; }
+#coinsBtn { top:10px; left:10px; }
+#redoBtn { top:50px; left:10px; }
+#insuranceBtn { top:90px; left:10px; }
 </style>
 </head>
 <body>
@@ -17,6 +18,7 @@ canvas { display:block; margin:auto; background:#6ec6ff; }
 <canvas id="game"></canvas>
 <button id="coinsBtn">Coins: 0</button>
 <button id="redoBtn">Redo</button>
+<button id="insuranceBtn">Buy Car Insurance (50)</button>
 
 <script>
 const canvas = document.getElementById("game");
@@ -27,6 +29,7 @@ canvas.height = 600;
 // Game variables
 let score = 0;
 let coinsCollected = 0;
+let carInsurance = 0; // extra life
 let spaceHeld = false;
 let cameraY = 0;
 
@@ -41,13 +44,12 @@ let smokeParticles = [];
 // Coins
 let coins = [];
 
-// Controls
 document.addEventListener("keydown", e => { if(e.code==="Space") spaceHeld=true; });
 document.addEventListener("keyup", e => { if(e.code==="Space") spaceHeld=false; });
 canvas.addEventListener("touchstart", e=>{ spaceHeld=true; e.preventDefault(); });
 canvas.addEventListener("touchend", e=>{ spaceHeld=false; e.preventDefault(); });
 
-// Initialize game
+// Initialize
 function initGame(){
     score=0; spaceHeld=false; cameraY=0;
     track=[]; coins=[]; smokeParticles=[];
@@ -60,8 +62,8 @@ function initGame(){
     }
     car.x = track[0].x;
     car.y = track[0].y - 25;
-    coinsCollected = 0;
-    document.getElementById("coinsBtn").innerText = "Coins: " + coinsCollected;
+    coinsCollected=0;
+    document.getElementById("coinsBtn").innerText="Coins: "+coinsCollected;
 }
 
 // Generate new track
@@ -74,101 +76,90 @@ function generateTrack(){
     if(track.length%3===0) coins.push({x:newX, y:last.y-150, collected:false});
 }
 
-// Update game state
+// Update
 function update(){
     score++;
-
-    // Drift
     if(spaceHeld){ car.angle += 0.03; smokeParticles.push({x:car.x, y:car.y, alpha:1, radius:Math.random()*5+5}); }
     else car.angle -= 0.03;
     car.angle = Math.max(-0.5, Math.min(0.5, car.angle));
 
-    // Move car forward
     car.x += Math.sin(car.angle)*car.speed;
     car.y -= Math.cos(car.angle)*car.speed;
     cameraY = car.y - 400;
 
-    // Endless track
     while(track[track.length-1].y > car.y - 600) generateTrack();
     if(track[0].y - cameraY > canvas.height + 100) track.shift();
     coins = coins.filter(c => c.y - cameraY < canvas.height + 50);
 
-    // Collect coins
+    // Coin collection
     coins.forEach(c => {
         if(!c.collected && Math.abs(car.x - c.x) < 30 && Math.abs(car.y - c.y) < 35){
-            c.collected = true;
-            coinsCollected++;
-            document.getElementById("coinsBtn").innerText = "Coins: " + coinsCollected;
+            c.collected=true; coinsCollected++;
+            document.getElementById("coinsBtn").innerText="Coins: "+coinsCollected;
         }
     });
 
-    // Check if car fell off track
+    // Track boundaries
     let safe=false;
     track.forEach(t => {
         if(car.x > t.x-trackWidth/2 && car.x < t.x+trackWidth/2 &&
            car.y > t.y-50 && car.y < t.y+50) safe=true;
     });
-    if(!safe) initGame();
 
-    // Smoke particles fade
+    if(!safe){
+        if(carInsurance>0){ carInsurance--; initGame(); } // use insurance
+        else initGame();
+    }
+
+    // Smoke fade
     smokeParticles = smokeParticles.map(s => ({x:s.x, y:s.y+1, alpha:s.alpha-0.02, radius:s.radius})).filter(s=>s.alpha>0);
 }
 
-// Draw everything
+// Draw
 function drawTrack(){
     ctx.fillStyle="#444";
     track.forEach(t => ctx.fillRect(t.x-trackWidth/2, t.y-50-cameraY, trackWidth,100));
 }
 function drawCoins(){
-    coins.forEach(c => {
+    coins.forEach(c=>{
         if(!c.collected){
-            ctx.fillStyle="gold";
-            ctx.beginPath();
-            ctx.arc(c.x, c.y-cameraY, 20, 0, Math.PI*2);
-            ctx.fill();
+            ctx.fillStyle="gold"; ctx.beginPath();
+            ctx.arc(c.x, c.y-cameraY, 20,0,Math.PI*2); ctx.fill();
         }
     });
 }
 function drawSmoke(){
-    smokeParticles.forEach(s => {
-        ctx.fillStyle = `rgba(200,200,200,${s.alpha})`;
-        ctx.beginPath();
-        ctx.arc(s.x, s.y-cameraY, s.radius,0,Math.PI*2);
-        ctx.fill();
+    smokeParticles.forEach(s=>{
+        ctx.fillStyle=`rgba(200,200,200,${s.alpha})`;
+        ctx.beginPath(); ctx.arc(s.x, s.y-cameraY, s.radius,0,Math.PI*2); ctx.fill();
     });
 }
 function drawCar(){
     ctx.save();
     ctx.translate(car.x, car.y-cameraY);
     ctx.rotate(car.angle);
-    ctx.fillStyle="red";
-    ctx.strokeStyle="black";
-    ctx.lineWidth=2;
-    ctx.fillRect(-car.width/2, -car.height/2, car.width, car.height);
-    ctx.strokeRect(-car.width/2, -car.height/2, car.width, car.height);
+    ctx.fillStyle="red"; ctx.fillRect(-car.width/2, -car.height/2, car.width, car.height);
     ctx.restore();
 }
 function drawUI(){
     ctx.setTransform(1,0,0,1,0,0);
-    ctx.fillStyle = "white";
-    ctx.font = "20px Arial";
-    ctx.fillText("Score: " + score, 20, 30);
+    ctx.fillStyle="white"; ctx.font="20px Arial";
+    ctx.fillText("Score: "+score, 20,30);
 }
 
-// Game loop
+// Loop
 function loop(){
     update();
     ctx.clearRect(0,0,canvas.width,canvas.height);
-    drawTrack();
-    drawCoins();
-    drawSmoke();
-    drawCar();
-    drawUI();
+    drawTrack(); drawCoins(); drawSmoke(); drawCar(); drawUI();
     requestAnimationFrame(loop);
 }
 
-// Redo button
-document.getElementById("redoBtn").addEventListener("click", ()=>{ initGame(); });
+// Buttons
+document.getElementById("redoBtn").addEventListener("click", ()=>{initGame();});
+document.getElementById("insuranceBtn").addEventListener("click", ()=>{
+    if(coinsCollected>=50){ coinsCollected-=50; carInsurance++; document.getElementById("coinsBtn").innerText="Coins: "+coinsCollected; }
+});
 
 initGame();
 loop();
