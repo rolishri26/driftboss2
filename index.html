@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Drift Boss 2 - Poki Style</title>
+<title>Drift Boss 2 - Endless Camera</title>
 <style>
 body { margin:0; overflow:hidden; background:#87CEEB; }
 canvas { display:block; margin:auto; background:#6ec6ff; }
@@ -21,42 +21,41 @@ let score = 0;
 let gameOver = false;
 let spaceHeld = false;
 
-// Drift controls
+// One-button drift controls
 document.addEventListener("keydown", e => { if(e.code === "Space") spaceHeld = true; });
 document.addEventListener("keyup", e => { if(e.code === "Space") spaceHeld = false; });
 
 // Track configuration
-let trackWidth = 160; // wider for easier start
-
-// Track array
+let trackWidth = 160;
 let track = [];
 
-// Generate first 7 straight tiles (safe start)
+// Camera
+let cameraY = 0;
+
+// Generate initial track
 for(let i=0; i<7; i++){
     track.push({ x: canvas.width/2, y: 500 - i*100 });
 }
-
-// Then generate slightly zig-zagging tiles, but easy
 for(let i=7; i<25; i++){
     let last = track[track.length-1];
     let dir = Math.random() > 0.5 ? 1 : -1;
-    let shift = 80; // smaller than full width, easier for player
-    let newX = last.x + dir * shift;
+    let shift = 80;
+    let newX = last.x + dir*shift;
     newX = Math.max(trackWidth/2, Math.min(canvas.width - trackWidth/2, newX));
     track.push({ x: newX, y: last.y - 100 });
 }
 
-// Load your car image
+// Load your Poki-style car image
 const carSprite = new Image();
-carSprite.src = "car.png"; // replace with your car picture
+carSprite.src = "car.png"; // put your car sprite in the same folder
 
 // Car object
 let car = {
     x: track[0].x,
     y: track[0].y - 25,
     angle: 0,
-    width: 60,   // proper car width
-    height: 120, // proper car height
+    width: 60,   // adjust to sprite size
+    height: 120,
     speed: 4
 };
 
@@ -70,7 +69,7 @@ function generateTrack(){
     track.push({ x: newX, y: last.y - 100 });
 }
 
-// Update car and game logic
+// Update game
 function update(){
     if(gameOver) return;
 
@@ -78,9 +77,9 @@ function update(){
 
     // Drift logic
     if(spaceHeld){
-        car.angle += 0.03; // drift right
+        car.angle += 0.03; // turn right
     } else {
-        car.angle -= 0.03; // drift left
+        car.angle -= 0.03; // turn left
     }
 
     car.angle = Math.max(-0.5, Math.min(0.5, car.angle));
@@ -89,10 +88,15 @@ function update(){
     car.x += Math.sin(car.angle) * car.speed;
     car.y -= Math.cos(car.angle) * car.speed;
 
-    // Generate tiles if needed
-    if(track.length < 30) generateTrack();
+    // Camera follows car
+    cameraY = car.y - 400; // keeps car around 400px vertical
 
-    // Check collision
+    // Generate new tiles
+    if(track[track.length-1].y > -100){
+        generateTrack();
+    }
+
+    // Collision detection
     let safe = false;
     for(let piece of track){
         if(car.x > piece.x - trackWidth/2 && car.x < piece.x + trackWidth/2 &&
@@ -108,14 +112,14 @@ function update(){
 function drawTrack(){
     ctx.fillStyle = "#444";
     for(let piece of track){
-        ctx.fillRect(piece.x - trackWidth/2, piece.y - 50, trackWidth, 100);
+        ctx.fillRect(piece.x - trackWidth/2, piece.y - 50 - cameraY, trackWidth, 100);
     }
 }
 
-// Draw car with sprite
+// Draw car
 function drawCar(){
     ctx.save();
-    ctx.translate(car.x, car.y);
+    ctx.translate(car.x, car.y - cameraY);
     ctx.rotate(car.angle);
     ctx.drawImage(carSprite, -car.width/2, -car.height/2, car.width, car.height);
     ctx.restore();
