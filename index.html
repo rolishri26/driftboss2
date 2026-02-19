@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Drift Boss 2 - Poki Car</title>
+<title>Drift Boss 2 - Poki Style</title>
 <style>
 body { margin:0; overflow:hidden; background:#87CEEB; }
 canvas { display:block; margin:auto; background:#6ec6ff; }
@@ -21,54 +21,56 @@ let score = 0;
 let gameOver = false;
 let spaceHeld = false;
 
-// One-button drift controls
+// Drift controls
 document.addEventListener("keydown", e => { if(e.code === "Space") spaceHeld = true; });
 document.addEventListener("keyup", e => { if(e.code === "Space") spaceHeld = false; });
 
-let trackWidth = 120;
+// Track configuration
+let trackWidth = 160; // wider for easier start
 
 // Track array
 let track = [];
 
-// Generate first 5 straight tiles so car starts safely
-for(let i=0; i<5; i++){
-    track.push({ x: 400, y: 500 - i*100 });
+// Generate first 7 straight tiles (safe start)
+for(let i=0; i<7; i++){
+    track.push({ x: canvas.width/2, y: 500 - i*100 });
 }
 
-// Then generate random zig-zag tiles
-for(let i=5; i<20; i++){
+// Then generate slightly zig-zagging tiles, but easy
+for(let i=7; i<25; i++){
     let last = track[track.length-1];
     let dir = Math.random() > 0.5 ? 1 : -1;
-    let newX = last.x + dir*100;
+    let shift = 80; // smaller than full width, easier for player
+    let newX = last.x + dir * shift;
     newX = Math.max(trackWidth/2, Math.min(canvas.width - trackWidth/2, newX));
     track.push({ x: newX, y: last.y - 100 });
 }
 
-// Load car sprite
+// Load your car image
 const carSprite = new Image();
-carSprite.src = "car.png"; // Put your Poki-style sprite in the same folder
+carSprite.src = "car.png"; // replace with your car picture
 
-// Car object, starting on the first tile
+// Car object
 let car = {
     x: track[0].x,
     y: track[0].y - 25,
     angle: 0,
-    width: 40,   // adjust size according to your sprite
-    height: 70,
-    speed: 4,
-    driftingRight: false
+    width: 60,   // proper car width
+    height: 120, // proper car height
+    speed: 4
 };
 
-// Generate new track tile
+// Generate new track tiles
 function generateTrack(){
     let last = track[track.length-1];
     let dir = Math.random() > 0.5 ? 1 : -1;
-    let newX = last.x + dir*100;
+    let shift = 80;
+    let newX = last.x + dir*shift;
     newX = Math.max(trackWidth/2, Math.min(canvas.width - trackWidth/2, newX));
     track.push({ x: newX, y: last.y - 100 });
 }
 
-// Update car & game logic
+// Update car and game logic
 function update(){
     if(gameOver) return;
 
@@ -76,21 +78,21 @@ function update(){
 
     // Drift logic
     if(spaceHeld){
-        car.angle += 0.04; // turn right
+        car.angle += 0.03; // drift right
     } else {
-        car.angle -= 0.04; // turn left
+        car.angle -= 0.03; // drift left
     }
 
-    car.angle = Math.max(-0.7, Math.min(0.7, car.angle));
+    car.angle = Math.max(-0.5, Math.min(0.5, car.angle));
 
-    // Move forward along angle
+    // Move forward based on angle
     car.x += Math.sin(car.angle) * car.speed;
     car.y -= Math.cos(car.angle) * car.speed;
 
-    // Generate new tiles if needed
+    // Generate tiles if needed
     if(track.length < 30) generateTrack();
 
-    // Collision detection
+    // Check collision
     let safe = false;
     for(let piece of track){
         if(car.x > piece.x - trackWidth/2 && car.x < piece.x + trackWidth/2 &&
@@ -99,7 +101,6 @@ function update(){
             break;
         }
     }
-
     if(!safe) gameOver = true;
 }
 
@@ -111,7 +112,7 @@ function drawTrack(){
     }
 }
 
-// Draw car using sprite
+// Draw car with sprite
 function drawCar(){
     ctx.save();
     ctx.translate(car.x, car.y);
