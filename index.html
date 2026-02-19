@@ -1,19 +1,10 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Drift Boss 2</title>
+<title>Drift Boss 2 - Poki Car</title>
 <style>
-body {
-  margin: 0;
-  overflow: hidden;
-  background: linear-gradient(#87CEEB, #4CAF50);
-}
-
-canvas {
-  display: block;
-  margin: auto;
-  background: #6ec6ff;
-}
+body { margin:0; overflow:hidden; background:#87CEEB; }
+canvas { display:block; margin:auto; background:#6ec6ff; }
 </style>
 </head>
 <body>
@@ -23,139 +14,138 @@ canvas {
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
-
 canvas.width = 800;
 canvas.height = 600;
 
-let car = {
-  x: 400,
-  y: 300,
-  angle: 0,
-  size: 30,
-  driftingRight: false,
-  speed: 4
-};
-
-let track = [];
-let trackWidth = 120;
 let score = 0;
 let gameOver = false;
+let spaceHeld = false;
 
-// Generate initial straight track
-for (let i = 0; i < 20; i++) {
-  track.push({x: 400, y: 300 - i * 100});
+// One-button drift controls
+document.addEventListener("keydown", e => { if(e.code === "Space") spaceHeld = true; });
+document.addEventListener("keyup", e => { if(e.code === "Space") spaceHeld = false; });
+
+let trackWidth = 120;
+
+// Track array
+let track = [];
+
+// Generate first 5 straight tiles so car starts safely
+for(let i=0; i<5; i++){
+    track.push({ x: 400, y: 500 - i*100 });
 }
 
-// SPACE controls
-document.addEventListener("keydown", (e) => {
-  if (e.code === "Space") {
-    car.driftingRight = true;
-  }
-});
-
-document.addEventListener("keyup", (e) => {
-  if (e.code === "Space") {
-    car.driftingRight = false;
-  }
-});
-
-function generateTrack() {
-  let last = track[track.length - 1];
-  let direction = Math.random() > 0.5 ? -1 : 1;
-
-  track.push({
-    x: last.x + direction * 100,
-    y: last.y - 100
-  });
+// Then generate random zig-zag tiles
+for(let i=5; i<20; i++){
+    let last = track[track.length-1];
+    let dir = Math.random() > 0.5 ? 1 : -1;
+    let newX = last.x + dir*100;
+    newX = Math.max(trackWidth/2, Math.min(canvas.width - trackWidth/2, newX));
+    track.push({ x: newX, y: last.y - 100 });
 }
 
-function update() {
-  if (gameOver) return;
+// Load car sprite
+const carSprite = new Image();
+carSprite.src = "car.png"; // Put your Poki-style sprite in the same folder
 
-  score += 1;
+// Car object, starting on the first tile
+let car = {
+    x: track[0].x,
+    y: track[0].y - 25,
+    angle: 0,
+    width: 40,   // adjust size according to your sprite
+    height: 70,
+    speed: 4,
+    driftingRight: false
+};
 
-  // Drift movement
-  if (car.driftingRight) {
-    car.x += 3;
-    car.angle = 0.3;
-  } else {
-    car.x -= 3;
-    car.angle = -0.3;
-  }
+// Generate new track tile
+function generateTrack(){
+    let last = track[track.length-1];
+    let dir = Math.random() > 0.5 ? 1 : -1;
+    let newX = last.x + dir*100;
+    newX = Math.max(trackWidth/2, Math.min(canvas.width - trackWidth/2, newX));
+    track.push({ x: newX, y: last.y - 100 });
+}
 
-  car.y -= car.speed;
+// Update car & game logic
+function update(){
+    if(gameOver) return;
 
-  // Camera effect
-  ctx.translate(0, car.speed);
+    score++;
 
-  // Generate new track
-  if (track.length < 30) {
-    generateTrack();
-  }
-
-  // Collision check
-  let safe = false;
-  for (let piece of track) {
-    if (
-      car.x > piece.x - trackWidth/2 &&
-      car.x < piece.x + trackWidth/2 &&
-      car.y < piece.y + 50 &&
-      car.y > piece.y - 50
-    ) {
-      safe = true;
+    // Drift logic
+    if(spaceHeld){
+        car.angle += 0.04; // turn right
+    } else {
+        car.angle -= 0.04; // turn left
     }
-  }
 
-  if (!safe) {
-    gameOver = true;
-  }
+    car.angle = Math.max(-0.7, Math.min(0.7, car.angle));
+
+    // Move forward along angle
+    car.x += Math.sin(car.angle) * car.speed;
+    car.y -= Math.cos(car.angle) * car.speed;
+
+    // Generate new tiles if needed
+    if(track.length < 30) generateTrack();
+
+    // Collision detection
+    let safe = false;
+    for(let piece of track){
+        if(car.x > piece.x - trackWidth/2 && car.x < piece.x + trackWidth/2 &&
+           car.y < piece.y + 50 && car.y > piece.y - 50){
+            safe = true;
+            break;
+        }
+    }
+
+    if(!safe) gameOver = true;
 }
 
-function drawTrack() {
-  ctx.fillStyle = "#333";
-  for (let piece of track) {
-    ctx.fillRect(
-      piece.x - trackWidth/2,
-      piece.y - 50,
-      trackWidth,
-      100
-    );
-  }
+// Draw track
+function drawTrack(){
+    ctx.fillStyle = "#444";
+    for(let piece of track){
+        ctx.fillRect(piece.x - trackWidth/2, piece.y - 50, trackWidth, 100);
+    }
 }
 
-function drawCar() {
-  ctx.save();
-  ctx.translate(car.x, car.y);
-  ctx.rotate(car.angle);
-
-  ctx.fillStyle = "red";
-  ctx.fillRect(-15, -25, 30, 50);
-
-  ctx.restore();
+// Draw car using sprite
+function drawCar(){
+    ctx.save();
+    ctx.translate(car.x, car.y);
+    ctx.rotate(car.angle);
+    ctx.drawImage(carSprite, -car.width/2, -car.height/2, car.width, car.height);
+    ctx.restore();
 }
 
-function drawUI() {
-  ctx.setTransform(1,0,0,1,0,0);
-  ctx.fillStyle = "white";
-  ctx.font = "20px Arial";
-  ctx.fillText("Score: " + score, 20, 30);
+// Draw UI
+function drawUI(){
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.fillStyle = "white";
+    ctx.font = "20px Arial";
+    ctx.fillText("Score: " + score, 20, 30);
 
-  if (gameOver) {
-    ctx.font = "40px Arial";
-    ctx.fillText("GAME OVER", 300, 300);
-  }
+    if(gameOver){
+        ctx.font = "40px Arial";
+        ctx.fillText("GAME OVER", 280, 300);
+        ctx.font = "18px Arial";
+        ctx.fillText("Refresh page to restart", 300, 340);
+    }
 }
 
-function gameLoop() {
-  update();
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  drawTrack();
-  drawCar();
-  drawUI();
-  requestAnimationFrame(gameLoop);
+// Main loop
+function loop(){
+    update();
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    drawTrack();
+    drawCar();
+    drawUI();
+    requestAnimationFrame(loop);
 }
 
-gameLoop();
+loop();
 </script>
 
 </body>
