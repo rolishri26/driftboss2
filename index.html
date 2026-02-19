@@ -29,7 +29,7 @@ canvas { display:block; margin:auto; background:#6ec6ff; }
 <canvas id="game"></canvas>
 <button id="highscoreBtn">View Highscore</button>
 <button id="coinsBtn">Coins: 0</button>
-<button id="insuranceBtn">Buy Car Insurance (100 Coins)</button>
+<button id="insuranceBtn">Buy Car Insurance (50 Coins)</button>
 
 <script>
 const canvas = document.getElementById("game");
@@ -157,7 +157,6 @@ function update(){
     }
     if(!safe){
         if(carInsurance){
-            // use insurance once
             carInsurance = false;
             alert("Car Insurance used! You have an extra life!");
         } else {
@@ -191,7 +190,7 @@ function drawCoins(){
         if(!c.collected){
             ctx.fillStyle = "gold";
             ctx.beginPath();
-            ctx.arc(c.x, c.y - cameraY, 15, 0, Math.PI*2); // wider coins
+            ctx.arc(c.x, c.y - cameraY, 15, 0, Math.PI*2);
             ctx.fill();
         }
     }
@@ -248,9 +247,10 @@ coinsBtn.style.display = "block";
 // Insurance button
 const insuranceBtn = document.getElementById("insuranceBtn");
 insuranceBtn.style.display = "block";
+insuranceBtn.innerText = "Buy Car Insurance (50 Coins)";
 insuranceBtn.addEventListener("click", () => {
-    if(coinsCollected >= 100 && !carInsurance){
-        coinsCollected -= 100;
+    if(coinsCollected >= 50 && !carInsurance){
+        coinsCollected -= 50;
         carInsurance = true;
         localStorage.setItem("driftCoins", coinsCollected);
         document.getElementById("coinsBtn").innerText = "Coins: " + coinsCollected;
