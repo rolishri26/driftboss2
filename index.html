@@ -55,6 +55,10 @@ document.addEventListener("keyup", e => { if(e.code==="Space") spaceHeld=false; 
 canvas.addEventListener("touchstart", e=>{spaceHeld=true; e.preventDefault();});
 canvas.addEventListener("touchend", e=>{spaceHeld=false; e.preventDefault();});
 
+// Embedded car image (small cartoon-style)
+const carSprite = new Image();
+carSprite.src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAABECAYAAAAr91fNAAAACXBIWXMAAAsTAAALEwEAmpwYAAABlklEQVR4nO2aQQrCQAxF/xK3cGxC3YK2QC9p6J8Y9Qypl5n4ZPBBdFeXrwdqAFf6HgAAb2I8S4FhNOD8gmQ2z+K3Hj+U6R0A5s6SpCZ1OqL6TUM5TCzSuBzVRoaZ4A0z+I3/MC8o9CDAplxgdWT4bUftIkJx6nU1wziWhRZx+edq6F6BZd9a6WgNPRDg1oM9NG9GtgYcU7E7S1grRATaeZ+0P/3v/IsdxHw2vNwHi2A5f7czk5z0fABk6lMyzzpVQpHcQ+8FjA1v0ZHQ0Qg1GZDJdHDxE0BqHiqRCrdCSo+nWTj9IbGQL5w0i5H/3f8bnZBqnxMqpuZC0TtvY+5pEq1H5p8n0k+xkQeAz1kU8qQLgkQfs9r8HbB1jHnqX+TQn0AAAAASUVORK5CYII=";
+
 // Initialize
 function initGame(){
     score=0; spaceHeld=false; cameraY=0;
@@ -147,11 +151,7 @@ function drawCar(){
     ctx.save();
     ctx.translate(car.x,car.y-cameraY);
     ctx.rotate(car.angle);
-    ctx.fillStyle="red"; // visible car
-    ctx.strokeStyle="black";
-    ctx.lineWidth=2;
-    ctx.fillRect(-car.width/2,-car.height/2,car.width,car.height);
-    ctx.strokeRect(-car.width/2,-car.height/2,car.width,car.height);
+    ctx.drawImage(carSprite, -car.width/2, -car.height/2, car.width, car.height);
     ctx.restore();
 }
 
@@ -177,8 +177,8 @@ function loop(){
 // Buttons
 document.getElementById("redoBtn").addEventListener("click",()=>{initGame();});
 
-initGame();
-loop();
+// Start game after car loads
+carSprite.onload = () => { initGame(); loop(); }
 </script>
 
 </body>
