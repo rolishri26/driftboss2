@@ -1,99 +1,33 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Drift Boss 2</title>
+  <title>Drift Boss 2 - Single Player</title>
   <style>
-    body { margin:0; background:#111; color:white; font-family:sans-serif; overflow:hidden; }
-    canvas { display:block; margin:auto; background:#222; }
+    body { margin:0; background:#000; overflow:hidden; }
+    canvas { display:block; margin:auto; background:linear-gradient(#222,#000); }
   </style>
 </head>
 <body>
-<canvas id="game" width="1000" height="600"></canvas>
+<canvas id="game" width="600" height="600"></canvas>
 
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-const TRACK_WIDTH = 220;
-const GAP = 120;
+const TRACK_WIDTH = 200;
 const TILE_SIZE = 60;
-const WIN_SCORE = 1000;
+const SPEED = 3;
 
-let keys = {};
-document.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
-document.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
-
-const CAR_TYPES = {
-  starter: { driftSpeed: 0.05, forwardSpeed: 2, stability: 1 },
-  sport:   { driftSpeed: 0.08, forwardSpeed: 2.5, stability: 0.8 },
-  tank:    { driftSpeed: 0.03, forwardSpeed: 1.8, stability: 1.4 }
-};
-
-class Car {
-  constructor(x, color, controlKey, magnetKey, type) {
-    this.x = x;
-    this.y = 500;
-    this.angle = 0;
-    this.alive = true;
-    this.score = 0;
-    this.coins = 0;
-    this.color = color;
-    this.controlKey = controlKey;
-    this.magnetKey = magnetKey;
-    this.stats = CAR_TYPES[type];
-    this.magnetActive = false;
-    this.magnetTimer = 0;
-  }
-
-  update(trackX) {
-    if (!this.alive) return;
-
-    this.score += this.stats.forwardSpeed;
-
-    if (keys[this.controlKey]) {
-      this.angle -= this.stats.driftSpeed;
-    } else {
-      this.angle += this.stats.driftSpeed;
-    }
-
-    this.x += Math.sin(this.angle) * (3 / this.stats.stability);
-
-    if (this.x < trackX || this.x > trackX + TRACK_WIDTH) {
-      this.alive = false;
-    }
-
-    if (keys[this.magnetKey] && this.coins >= 5 && !this.magnetActive) {
-      this.coins -= 5;
-      this.magnetActive = true;
-      this.magnetTimer = 300;
-    }
-
-    if (this.magnetActive) {
-      this.magnetTimer--;
-      if (this.magnetTimer <= 0) this.magnetActive = false;
-    }
-  }
-
-  draw() {
-    ctx.save();
-    ctx.translate(this.x, this.y);
-    ctx.rotate(this.angle);
-    ctx.fillStyle = this.color;
-    ctx.fillRect(-15, -10, 30, 20);
-    ctx.restore();
-
-    if (this.magnetActive) {
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, 50, 0, Math.PI*2);
-      ctx.strokeStyle = "yellow";
-      ctx.stroke();
-    }
-  }
-}
+let spaceHeld = false;
+document.addEventListener("keydown", e => {
+  if (e.code === "Space") spaceHeld = true;
+});
+document.addEventListener("keyup", e => {
+  if (e.code === "Space") spaceHeld = false;
+});
 
 class Track {
-  constructor(startX) {
-    this.startX = startX;
+  constructor() {
     this.tiles = [];
     this.offsetY = 0;
     for (let i = 0; i < 15; i++) {
@@ -101,15 +35,16 @@ class Track {
     }
   }
 
-  update(speed) {
-    this.offsetY += speed;
+  update() {
+    this.offsetY += SPEED;
 
     if (this.offsetY >= TILE_SIZE) {
       this.offsetY = 0;
       this.tiles.shift();
+
       let lastShift = this.tiles[this.tiles.length - 1].shift;
-      let newShift = lastShift + (Math.random() > 0.5 ? 25 : -25);
-      newShift = Math.max(-100, Math.min(100, newShift));
+      let newShift = lastShift + (Math.random() > 0.5 ? 30 : -30);
+      newShift = Math.max(-120, Math.min(120, newShift));
       this.tiles.push({ shift: newShift });
     }
   }
@@ -118,114 +53,105 @@ class Track {
     for (let i = 0; i < this.tiles.length; i++) {
       let tile = this.tiles[i];
       let y = i * TILE_SIZE - this.offsetY;
-      ctx.fillStyle = "#555";
-      ctx.fillRect(this.startX + tile.shift, y, TRACK_WIDTH, TILE_SIZE);
+
+      ctx.fillStyle = "#444";
+      ctx.fillRect(
+        canvas.width/2 - TRACK_WIDTH/2 + tile.shift,
+        y,
+        TRACK_WIDTH,
+        TILE_SIZE
+      );
     }
   }
 
   getCurrentX() {
-    return this.startX + this.tiles[10].shift;
+    return canvas.width/2 - TRACK_WIDTH/2 + this.tiles[10].shift;
   }
 }
 
-class Coin {
-  constructor(x, y) {
-    this.x = x;
-    this.y = y;
+class Car {
+  constructor() {
+    this.x = canvas.width/2;
+    this.y = 500;
+    this.angle = 0;
+    this.alive = true;
+    this.score = 0;
+  }
+
+  update(trackX) {
+    if (!this.alive) return;
+
+    this.score++;
+
+    // SPACE = drift right
+    if (spaceHeld) {
+      this.angle += 0.06;
+    } else {
+      this.angle -= 0.06;
+    }
+
+    this.x += Math.sin(this.angle) * 4;
+
+    if (this.x < trackX || this.x > trackX + TRACK_WIDTH) {
+      this.alive = false;
+    }
   }
 
   draw() {
-    ctx.fillStyle = "gold";
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, 8, 0, Math.PI*2);
-    ctx.fill();
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.angle);
+
+    // Car body
+    ctx.fillStyle = "#00ffcc";
+    ctx.fillRect(-12, -20, 24, 40);
+
+    // Windshield
+    ctx.fillStyle = "#222";
+    ctx.fillRect(-8, -15, 16, 10);
+
+    // Wheels
+    ctx.fillStyle = "black";
+    ctx.fillRect(-14, -18, 4, 10);
+    ctx.fillRect(10, -18, 4, 10);
+    ctx.fillRect(-14, 8, 4, 10);
+    ctx.fillRect(10, 8, 4, 10);
+
+    ctx.restore();
   }
 }
 
-function distance(a, b) {
-  return Math.hypot(a.x - b.x, a.y - b.y);
-}
-
-let track1 = new Track(100);
-let track2 = new Track(100 + TRACK_WIDTH + GAP);
-
-let car1 = new Car(200, "cyan", "a", "s", "starter");
-let car2 = new Car(650, "orange", "l", "k", "sport");
-
-let coins = [];
-
-function spawnCoin(track) {
-  let x = track.startX + 60 + Math.random() * (TRACK_WIDTH - 120);
-  coins.push(new Coin(x, -20));
-}
-
-setInterval(() => {
-  spawnCoin(track1);
-  spawnCoin(track2);
-}, 1500);
-
-function updateCoins() {
-  for (let i = coins.length - 1; i >= 0; i--) {
-    let coin = coins[i];
-    coin.y += 2;
-
-    [car1, car2].forEach(car => {
-      if (!car.alive) return;
-
-      if (car.magnetActive) {
-        let dx = coin.x - car.x;
-        let dy = coin.y - car.y;
-        coin.x -= dx * 0.05;
-        coin.y -= dy * 0.05;
-      }
-
-      if (distance(car, coin) < 20) {
-        car.coins++;
-        coins.splice(i, 1);
-      }
-    });
-
-    if (coin.y > canvas.height) coins.splice(i, 1);
-  }
-}
+let track = new Track();
+let car = new Car();
 
 function drawUI() {
   ctx.fillStyle = "white";
-  ctx.fillText("P1 Score: " + Math.floor(car1.score) + " | Coins: " + car1.coins, 100, 30);
-  ctx.fillText("P2 Score: " + Math.floor(car2.score) + " | Coins: " + car2.coins, 600, 30);
+  ctx.font = "20px Arial";
+  ctx.fillText("Score: " + car.score, 20, 30);
 
-  if (!car1.alive) ctx.fillText("P1 ELIMINATED 💀", 100, 60);
-  if (!car2.alive) ctx.fillText("P2 ELIMINATED 💀", 600, 60);
-
-  if (car1.score >= WIN_SCORE) ctx.fillText("P1 WINS 🏆", 400, 300);
-  if (car2.score >= WIN_SCORE) ctx.fillText("P2 WINS 🏆", 400, 300);
+  if (!car.alive) {
+    ctx.fillStyle = "red";
+    ctx.font = "30px Arial";
+    ctx.fillText("GAME OVER", 200, 280);
+    ctx.font = "18px Arial";
+    ctx.fillText("Refresh page to restart", 200, 320);
+  }
 }
 
 function gameLoop() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  track1.update(car1.stats.forwardSpeed);
-  track2.update(car2.stats.forwardSpeed);
+  track.update();
+  track.draw();
 
-  track1.draw();
-  track2.draw();
-
-  car1.update(track1.getCurrentX());
-  car2.update(track2.getCurrentX());
-
-  updateCoins();
-
-  coins.forEach(c => c.draw());
-
-  car1.draw();
-  car2.draw();
+  car.update(track.getCurrentX());
+  car.draw();
 
   drawUI();
 
   requestAnimationFrame(gameLoop);
 }
 
-ctx.font = "18px Arial";
 gameLoop();
 </script>
 </body>
