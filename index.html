@@ -6,7 +6,8 @@
 body { margin:0; overflow:hidden; background:#87CEEB; font-family:Arial, sans-serif; }
 canvas { display:block; margin:auto; background:#6ec6ff; }
 button {
-  position:absolute; padding:10px 20px; font-size:18px; background:#fff; border:none; border-radius:8px; cursor:pointer;
+  position:absolute; padding:10px 20px; font-size:18px;
+  background:#fff; border:none; border-radius:8px; cursor:pointer;
 }
 #coinsBtn { top:10px; left:10px; }
 #redoBtn { top:50px; left:10px; }
@@ -26,139 +27,174 @@ const ctx = canvas.getContext("2d");
 canvas.width = 800;
 canvas.height = 600;
 
-// Game variables
 let score = 0;
 let coinsCollected = 0;
-let carInsurance = 0; // extra life
+let carInsurance = 0;
 let spaceHeld = false;
 let cameraY = 0;
 
-// Track & car
 let trackWidth = 400;
 let track = [];
-let car = { x: canvas.width/2, y: 500, width:60, height:120, angle:0, speed:4 };
-
-// Smoke
+let coins = [];
 let smokeParticles = [];
 
-// Coins
-let coins = [];
+let car = {
+  x: canvas.width/2,
+  y: 500,
+  width: 60,
+  height: 120,
+  angle: 0,
+  speed: 4
+};
 
 document.addEventListener("keydown", e => { if(e.code==="Space") spaceHeld=true; });
 document.addEventListener("keyup", e => { if(e.code==="Space") spaceHeld=false; });
 canvas.addEventListener("touchstart", e=>{ spaceHeld=true; e.preventDefault(); });
 canvas.addEventListener("touchend", e=>{ spaceHeld=false; e.preventDefault(); });
 
-// Initialize
 function initGame(){
-    score=0; spaceHeld=false; cameraY=0;
-    track=[]; coins=[]; smokeParticles=[];
-    for(let i=0;i<25;i++){
-        let x = canvas.width/2;
-        let y = 500 - i*100;
-        if(i>=7){ let dir=Math.random()>0.5?1:-1; let shift=140; x = track[i-1].x + dir*shift; x = Math.max(trackWidth/2, Math.min(canvas.width-trackWidth/2, x)); }
-        track.push({x:x, y:y});
-        if(i%3===0) coins.push({x:x, y:y-50, collected:false});
+  score = 0;
+  cameraY = 0;
+  track = [];
+  coins = [];
+  smokeParticles = [];
+
+  for(let i=0;i<25;i++){
+    let x = canvas.width/2;
+    let y = 500 - i*100;
+    if(i>=7){
+      let dir = Math.random()>0.5?1:-1;
+      x = track[i-1].x + dir*140;
+      x = Math.max(trackWidth/2, Math.min(canvas.width-trackWidth/2, x));
     }
-    car.x = track[0].x;
-    car.y = track[0].y - 25;
-    coinsCollected=0;
-    document.getElementById("coinsBtn").innerText="Coins: "+coinsCollected;
+    track.push({x,y});
+    if(i%3===0) coins.push({x,y:y-50,collected:false});
+  }
+
+  car.x = track[0].x;
+  car.y = track[0].y - 25;
+  car.angle = 0;
+
+  document.getElementById("coinsBtn").innerText = "Coins: " + coinsCollected;
 }
 
-// Generate new track
 function generateTrack(){
-    let last=track[track.length-1];
-    let dir=Math.random()>0.5?1:-1; let shift=140;
-    let newX=last.x + dir*shift;
-    newX = Math.max(trackWidth/2, Math.min(canvas.width-trackWidth/2, newX));
-    track.push({x:newX, y:last.y-100});
-    if(track.length%3===0) coins.push({x:newX, y:last.y-150, collected:false});
+  let last = track[track.length-1];
+  let dir = Math.random()>0.5?1:-1;
+  let newX = last.x + dir*140;
+  newX = Math.max(trackWidth/2, Math.min(canvas.width-trackWidth/2, newX));
+  track.push({x:newX, y:last.y-100});
+  if(track.length%3===0) coins.push({x:newX,y:last.y-150,collected:false});
 }
 
-// Update
 function update(){
-    score++;
-    if(spaceHeld){ car.angle += 0.03; smokeParticles.push({x:car.x, y:car.y, alpha:1, radius:Math.random()*5+5}); }
-    else car.angle -= 0.03;
-    car.angle = Math.max(-0.5, Math.min(0.5, car.angle));
+  score++;
 
-    car.x += Math.sin(car.angle)*car.speed;
-    car.y -= Math.cos(car.angle)*car.speed;
-    cameraY = car.y - 400;
+  if(spaceHeld){
+    car.angle += 0.03;
+    smokeParticles.push({x:car.x,y:car.y,alpha:1,radius:Math.random()*5+5});
+  } else {
+    car.angle -= 0.03;
+  }
 
-    while(track[track.length-1].y > car.y - 600) generateTrack();
-    if(track[0].y - cameraY > canvas.height + 100) track.shift();
-    coins = coins.filter(c => c.y - cameraY < canvas.height + 50);
+  car.angle = Math.max(-0.5, Math.min(0.5, car.angle));
 
-    // Coin collection
-    coins.forEach(c => {
-        if(!c.collected && Math.abs(car.x - c.x) < 30 && Math.abs(car.y - c.y) < 35){
-            c.collected=true; coinsCollected++;
-            document.getElementById("coinsBtn").innerText="Coins: "+coinsCollected;
-        }
-    });
+  car.x += Math.sin(car.angle)*car.speed;
+  car.y -= Math.cos(car.angle)*car.speed;
 
-    // Track boundaries
-    let safe=false;
-    track.forEach(t => {
-        if(car.x > t.x-trackWidth/2 && car.x < t.x+trackWidth/2 &&
-           car.y > t.y-50 && car.y < t.y+50) safe=true;
-    });
+  cameraY = car.y - 400;
 
-    if(!safe){
-        if(carInsurance>0){ carInsurance--; initGame(); } // use insurance
-        else initGame();
+  while(track[track.length-1].y > car.y - 600){
+    generateTrack();
+  }
+
+  coins.forEach(c=>{
+    if(!c.collected && Math.abs(car.x-c.x)<30 && Math.abs(car.y-c.y)<35){
+      c.collected=true;
+      coinsCollected++;
+      document.getElementById("coinsBtn").innerText = "Coins: " + coinsCollected;
     }
+  });
 
-    // Smoke fade
-    smokeParticles = smokeParticles.map(s => ({x:s.x, y:s.y+1, alpha:s.alpha-0.02, radius:s.radius})).filter(s=>s.alpha>0);
+  let safe=false;
+  track.forEach(t=>{
+    if(car.x>t.x-trackWidth/2 && car.x<t.x+trackWidth/2 &&
+       car.y>t.y-50 && car.y<t.y+50){
+      safe=true;
+    }
+  });
+
+  if(!safe){
+    initGame();  // simple reset (working behavior)
+  }
+
+  smokeParticles = smokeParticles
+    .map(s=>({x:s.x,y:s.y+1,alpha:s.alpha-0.02,radius:s.radius}))
+    .filter(s=>s.alpha>0);
 }
 
-// Draw
 function drawTrack(){
-    ctx.fillStyle="#444";
-    track.forEach(t => ctx.fillRect(t.x-trackWidth/2, t.y-50-cameraY, trackWidth,100));
+  ctx.fillStyle="#444";
+  track.forEach(t=>{
+    ctx.fillRect(t.x-trackWidth/2, t.y-50-cameraY, trackWidth,100);
+  });
 }
+
 function drawCoins(){
-    coins.forEach(c=>{
-        if(!c.collected){
-            ctx.fillStyle="gold"; ctx.beginPath();
-            ctx.arc(c.x, c.y-cameraY, 20,0,Math.PI*2); ctx.fill();
-        }
-    });
+  coins.forEach(c=>{
+    if(!c.collected){
+      ctx.fillStyle="gold";
+      ctx.beginPath();
+      ctx.arc(c.x,c.y-cameraY,20,0,Math.PI*2);
+      ctx.fill();
+    }
+  });
 }
+
 function drawSmoke(){
-    smokeParticles.forEach(s=>{
-        ctx.fillStyle=`rgba(200,200,200,${s.alpha})`;
-        ctx.beginPath(); ctx.arc(s.x, s.y-cameraY, s.radius,0,Math.PI*2); ctx.fill();
-    });
+  smokeParticles.forEach(s=>{
+    ctx.fillStyle=`rgba(200,200,200,${s.alpha})`;
+    ctx.beginPath();
+    ctx.arc(s.x,s.y-cameraY,s.radius,0,Math.PI*2);
+    ctx.fill();
+  });
 }
+
 function drawCar(){
-    ctx.save();
-    ctx.translate(car.x, car.y-cameraY);
-    ctx.rotate(car.angle);
-    ctx.fillStyle="red"; ctx.fillRect(-car.width/2, -car.height/2, car.width, car.height);
-    ctx.restore();
+  ctx.save();
+  ctx.translate(car.x,car.y-cameraY);
+  ctx.rotate(car.angle);
+  ctx.fillStyle="red";
+  ctx.fillRect(-car.width/2,-car.height/2,car.width,car.height);
+  ctx.restore();
 }
+
 function drawUI(){
-    ctx.setTransform(1,0,0,1,0,0);
-    ctx.fillStyle="white"; ctx.font="20px Arial";
-    ctx.fillText("Score: "+score, 20,30);
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.fillStyle="white";
+  ctx.font="20px Arial";
+  ctx.fillText("Score: "+score,20,30);
 }
 
-// Loop
 function loop(){
-    update();
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    drawTrack(); drawCoins(); drawSmoke(); drawCar(); drawUI();
-    requestAnimationFrame(loop);
+  update();
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  drawTrack();
+  drawCoins();
+  drawSmoke();
+  drawCar();
+  drawUI();
+  requestAnimationFrame(loop);
 }
 
-// Buttons
-document.getElementById("redoBtn").addEventListener("click", ()=>{initGame();});
-document.getElementById("insuranceBtn").addEventListener("click", ()=>{
-    if(coinsCollected>=50){ coinsCollected-=50; carInsurance++; document.getElementById("coinsBtn").innerText="Coins: "+coinsCollected; }
+document.getElementById("redoBtn").addEventListener("click",initGame);
+
+document.getElementById("insuranceBtn").addEventListener("click",()=>{
+  if(coinsCollected>=50){
+    coinsCollected-=50;
+    carInsurance++;
+    document.getElementById("coinsBtn").innerText="Coins: "+coinsCollected;
+  }
 });
 
 initGame();
