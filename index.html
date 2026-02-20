@@ -1,21 +1,49 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Drift Boss 2 - Clean Working Base</title>
+<title>Drift Boss - Working Score Version</title>
 <style>
 body {
-  margin:0;
-  overflow:hidden;
-  background:#87CEEB;
+    margin: 0;
+    overflow: hidden;
+    background: #87CEEB;
+    font-family: Arial, sans-serif;
 }
+
 canvas {
-  display:block;
-  margin:auto;
-  background:#6ec6ff;
+    display: block;
+}
+
+#ui {
+    position: absolute;
+    top: 15px;
+    left: 20px;
+    color: white;
+    font-size: 20px;
+    z-index: 10;
+}
+
+#restartBtn {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    padding: 10px 15px;
+    font-size: 16px;
+    background: #222;
+    color: white;
+    border: none;
+    cursor: pointer;
 }
 </style>
 </head>
 <body>
+
+<div id="ui">
+    <div id="score">Score: 0</div>
+    <div id="highScore">High Score: 0</div>
+</div>
+
+<button id="restartBtn">Restart</button>
 
 <canvas id="game"></canvas>
 
@@ -23,152 +51,159 @@ canvas {
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-canvas.width = 800;
-canvas.height = 600;
-
-let spaceHeld = false;
-let cameraY = 0;
-
-let trackWidth = 400;
-let track = [];
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 
 let car = {
-  x: canvas.width / 2,
-  y: 500,
-  width: 60,
-  height: 120,
-  angle: 0,
-  speed: 4
+    x: canvas.width / 2,
+    y: canvas.height - 150,
+    width: 25,
+    height: 50,
+    speedX: 0
 };
+
+let track = [];
+let trackWidth = 350;
+let turnDirection = 1;
+
+let score = 0;
+let highScore = localStorage.getItem("driftHighScore") || 0;
+document.getElementById("highScore").innerText = "High Score: " + highScore;
+
+let gameOver = false;
+let isTurning = false;
+
+// Generate track
+function generateTrack() {
+    for (let i = 0; i < 200; i++) {
+        track.push({
+            x: canvas.width / 2,
+            y: -i * 80
+        });
+    }
+}
+
+generateTrack();
+
+function updateTrack() {
+    for (let i = 0; i < track.length; i++) {
+        track[i].y += 5;
+
+        if (track[i].y > canvas.height) {
+            track[i].y = -80;
+
+            if (Math.random() < 0.4) {
+                turnDirection *= -1;
+            }
+
+            track[i].x = track[(i - 1 + track.length) % track.length].x + turnDirection * 100;
+        }
+    }
+}
+
+function updateCar() {
+    if (isTurning) {
+        car.speedX = turnDirection * 6;
+    } else {
+        car.speedX *= 0.9;
+    }
+
+    car.x += car.speedX;
+}
+
+function checkCollision() {
+    let nearest = track.reduce((a, b) =>
+        Math.abs(b.y - car.y) < Math.abs(a.y - car.y) ? b : a
+    );
+
+    if (
+        car.x < nearest.x - trackWidth / 2 ||
+        car.x > nearest.x + trackWidth / 2
+    ) {
+        gameOver = true;
+
+        if (score > highScore) {
+            highScore = score;
+            localStorage.setItem("driftHighScore", highScore);
+        }
+    }
+}
+
+function drawTrack() {
+    ctx.fillStyle = "#444";
+    for (let segment of track) {
+        ctx.fillRect(
+            segment.x - trackWidth / 2,
+            segment.y,
+            trackWidth,
+            80
+        );
+    }
+}
+
+function drawCar() {
+    ctx.fillStyle = "red";
+    ctx.fillRect(car.x - car.width / 2, car.y, car.width, car.height);
+}
+
+function updateScore() {
+    score++;
+    document.getElementById("score").innerText = "Score: " + score;
+}
+
+function gameLoop() {
+    if (gameOver) {
+        ctx.fillStyle = "white";
+        ctx.font = "40px Arial";
+        ctx.fillText("Game Over", canvas.width / 2 - 100, canvas.height / 2);
+        return;
+    }
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    updateTrack();
+    updateCar();
+    checkCollision();
+    updateScore();
+
+    drawTrack();
+    drawCar();
+
+    requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
 
 // Controls
 document.addEventListener("keydown", e => {
-  if(e.code === "Space") spaceHeld = true;
+    if (e.code === "Space") {
+        isTurning = true;
+    }
 });
 
 document.addEventListener("keyup", e => {
-  if(e.code === "Space") spaceHeld = false;
-});
-
-canvas.addEventListener("touchstart", e=>{
-  spaceHeld = true;
-  e.preventDefault();
-});
-
-canvas.addEventListener("touchend", e=>{
-  spaceHeld = false;
-  e.preventDefault();
-});
-
-// Create starting track
-function initTrack(){
-  track = [];
-  for(let i=0;i<30;i++){
-    let x = canvas.width/2;
-    let y = 500 - i*100;
-
-    if(i>6){
-      let dir = Math.random()>0.5 ? 1 : -1;
-      x = track[i-1].x + dir*140;
-      x = Math.max(trackWidth/2,
-          Math.min(canvas.width-trackWidth/2, x));
+    if (e.code === "Space") {
+        isTurning = false;
     }
+});
 
-    track.push({x,y});
-  }
+// Touch controls
+document.addEventListener("touchstart", () => {
+    isTurning = true;
+});
 
-  car.x = track[0].x;
-  car.y = track[0].y - 25;
-}
+document.addEventListener("touchend", () => {
+    isTurning = false;
+});
 
-// Generate endless track
-function generateTrack(){
-  let last = track[track.length-1];
-  let dir = Math.random()>0.5 ? 1 : -1;
-
-  let newX = last.x + dir*140;
-  newX = Math.max(trackWidth/2,
-        Math.min(canvas.width-trackWidth/2, newX));
-
-  track.push({x:newX, y:last.y-100});
-}
-
-// Update game
-function update(){
-
-  if(spaceHeld){
-    car.angle += 0.03;
-  } else {
-    car.angle -= 0.03;
-  }
-
-  car.angle = Math.max(-0.5, Math.min(0.5, car.angle));
-
-  car.x += Math.sin(car.angle) * car.speed;
-  car.y -= Math.cos(car.angle) * car.speed;
-
-  cameraY = car.y - 400;
-
-  while(track[track.length-1].y > car.y - 600){
-    generateTrack();
-  }
-
-  // Check if off track
-  let safe = false;
-
-  for(let t of track){
-    if(car.x > t.x - trackWidth/2 &&
-       car.x < t.x + trackWidth/2 &&
-       car.y > t.y - 50 &&
-       car.y < t.y + 50){
-      safe = true;
-      break;
-    }
-  }
-
-  if(!safe){
-    initTrack(); // simple reset
-  }
-}
-
-// Draw
-function drawTrack(){
-  ctx.fillStyle = "#444";
-  for(let t of track){
-    ctx.fillRect(
-      t.x - trackWidth/2,
-      t.y - 50 - cameraY,
-      trackWidth,
-      100
-    );
-  }
-}
-
-function drawCar(){
-  ctx.save();
-  ctx.translate(car.x, car.y - cameraY);
-  ctx.rotate(car.angle);
-  ctx.fillStyle = "red";
-  ctx.fillRect(
-    -car.width/2,
-    -car.height/2,
-    car.width,
-    car.height
-  );
-  ctx.restore();
-}
-
-// Game loop
-function loop(){
-  update();
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  drawTrack();
-  drawCar();
-  requestAnimationFrame(loop);
-}
-
-initTrack();
-loop();
+// Restart button
+document.getElementById("restartBtn").onclick = function() {
+    score = 0;
+    car.x = canvas.width / 2;
+    gameOver = false;
+    document.getElementById("score").innerText = "Score: 0";
+    gameLoop();
+};
 </script>
 
 </body>
